@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2c1810">
+  <link rel="manifest" href="manifest.json">
+  <title>첼로 연습</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a0f0a 0%, #2c1810 50%, #1a0f0a 100%);
+      color: #e8d5c4;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    header {
+      text-align: center;
+      padding: 12px 0;
+    }
+    header h1 {
+      font-size: 24px;
+      color: #d4a574;
+      letter-spacing: 2px;
+    }
+    header p {
+      font-size: 12px;
+      color: #8a7060;
+      margin-top: 4px;
+    }
+
+    /* 음원 토글 */
+    .sound-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 8px;
+      align-items: center;
+    }
+    .sound-toggle-btn {
+      background: #3a2518;
+      border: 2px solid #5a3a28;
+      color: #c4a080;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sound-toggle-btn.active {
+      background: #6b3a20;
+      border-color: #d4a574;
+      color: #fff;
+    }
+    .sample-status {
+      font-size: 11px;
+      color: #6a5040;
+    }
+
+    /* 버튼 그리드 */
+    .note-grid {
+      margin: 12px 0;
+    }
+    .octave-group {
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .octave-label {
+      font-size: 11px;
+      color: #8a7060;
+      text-align: center;
+      margin-bottom: 4px;
+      letter-spacing: 1px;
+    }
+    .note-row {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .note-row.sharps {
+      margin-bottom: 2px;
+    }
+    .note-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+    .note-btn:active, .note-btn.playing {
+      transform: scale(0.92);
+    }
+    .note-btn.natural {
+      background: linear-gradient(180deg, #f5e6d3, #e8d0b8);
+      color: #3a2518;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    }
+    .note-btn.natural:active, .note-btn.natural.playing {
+      background: linear-gradient(180deg, #d4a574, #c4956a);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .note-btn.sharp {
+      background: linear-gradient(180deg, #3a2518, #2a1a10);
+      color: #d4a574;
+      width: 38px;
+      height: 36px;
+      font-size: 11px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    }
+    .note-btn.sharp:active, .note-btn.sharp.playing {
+      background: linear-gradient(180deg, #6b3a20, #5a3020);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .note-btn .sub {
+      font-size: 9px;
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      opacity: 0.6;
+    }
+    .octave-group-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #3a2518, transparent);
+      margin: 4px 0;
+    }
+
+    /* 구분선 */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #5a3a28, transparent);
+      margin: 20px 0;
+    }
+
+    /* 텍스트 입력 */
+    .text-input-section h3 {
+      font-size: 14px;
+      color: #d4a574;
+      margin-bottom: 8px;
+    }
+    .text-input-area {
+      width: 100%;
+      min-height: 60px;
+      background: #2a1a10;
+      border: 2px solid #5a3a28;
+      border-radius: 10px;
+      color: #e8d5c4;
+      padding: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .text-input-area::placeholder {
+      color: #6a5040;
+    }
+    .text-input-area:focus {
+      outline: none;
+      border-color: #d4a574;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .play-btn {
+      background: linear-gradient(180deg, #6b3a20, #5a2a15);
+      border: 2px solid #8a5a3a;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .play-btn:active {
+      transform: scale(0.95);
+    }
+    .play-btn.stopping {
+      background: linear-gradient(180deg, #8a2020, #6a1515);
+      border-color: #aa4040;
+    }
+
+    .bpm-control {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bpm-control label {
+      font-size: 12px;
+      color: #8a7060;
+      white-space: nowrap;
+    }
+    .bpm-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: #3a2518;
+      border-radius: 3px;
+      outline: none;
+    }
+    .bpm-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #d4a574;
+      cursor: pointer;
+    }
+    .bpm-value {
+      font-size: 14px;
+      color: #d4a574;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    /* 현재 재생 표시 */
+    .now-playing {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #8a7060;
+      min-height: 20px;
+    }
+    .now-playing .current {
+      color: #d4a574;
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    /* 탭 네비게이션 */
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      margin: 12px 0 0;
+      border-bottom: 2px solid #3a2518;
+    }
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #8a7060;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: #d4a574;
+      border-bottom-color: #d4a574;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* 퀴즈 */
+    .quiz-section { padding-top: 16px; }
+    .quiz-config {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .quiz-config label {
+      font-size: 12px;
+      color: #8a7060;
+    }
+    .quiz-config select {
+      background: #2a1a10;
+      border: 2px solid #5a3a28;
+      color: #e8d5c4;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .quiz-config select:focus {
+      outline: none;
+      border-color: #d4a574;
+    }
+    .quiz-start-btn {
+      background: linear-gradient(180deg, #2a6b30, #1a5a20);
+      border: 2px solid #3a8a40;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .quiz-start-btn:active { transform: scale(0.95); }
+
+    .quiz-status {
+      text-align: center;
+      margin: 16px 0;
+    }
+    .quiz-score {
+      font-size: 14px;
+      color: #8a7060;
+      margin-bottom: 8px;
+    }
+    .quiz-prompt {
+      font-size: 20px;
+      font-weight: 700;
+      color: #d4a574;
+      min-height: 30px;
+    }
+    .quiz-replay-btn {
+      background: linear-gradient(180deg, #6b3a20, #5a2a15);
+      border: 2px solid #8a5a3a;
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .quiz-replay-btn:active { transform: scale(0.95); }
+
+    .quiz-feedback {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      min-height: 36px;
+      margin: 12px 0;
+      transition: all 0.3s;
+    }
+    .quiz-feedback.correct { color: #4caf50; }
+    .quiz-feedback.wrong { color: #e05050; }
+
+    .quiz-answer-grid {
+      margin: 12px 0;
+    }
+    .quiz-answer-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .quiz-ans-btn {
+      width: 50px;
+      height: 44px;
+      border-radius: 8px;
+      border: 2px solid #5a3a28;
+      background: #2a1a10;
+      color: #e8d5c4;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .quiz-ans-btn:active { transform: scale(0.92); }
+    .quiz-ans-btn.correct-flash {
+      background: #2a6b30;
+      border-color: #4caf50;
+      color: #fff;
+    }
+    .quiz-ans-btn.wrong-flash {
+      background: #6b2020;
+      border-color: #e05050;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Cello Practice</h1>
+      <p>계이름을 터치하거나 입력하세요</p>
+      <div class="sound-toggle">
+        <button class="sound-toggle-btn active" id="btnSample" onclick="setSoundMode(true)">실제 샘플</button>
+        <button class="sound-toggle-btn" id="btnSynth" onclick="setSoundMode(false)">합성음</button>
+        <span class="sample-status" id="sampleStatus"></span>
+      </div>
+    </header>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('play')">연주</button>
+      <button class="tab-btn" onclick="switchTab('melody')">멜로디</button>
+      <button class="tab-btn" onclick="switchTab('quiz')">퀴즈</button>
+    </div>
+
+    <div class="tab-content active" id="tab-play">
+      <div class="note-grid" id="noteGrid"></div>
+    </div>
+
+    <div class="tab-content" id="tab-melody">
+      <div class="text-input-section" style="padding-top:16px">
+        <h3>멜로디 입력</h3>
+        <textarea class="text-input-area" id="melodyInput"
+          placeholder="예: 도 레 미 파 솔 라 시 도&#10;반음: 도# 레# 파# 솔# 라#&#10;옥타브: 도1 레2 미3 (1=낮은, 2=가운데, 3=높은)"></textarea>
+        <div class="controls">
+          <button class="play-btn" id="playBtn" onclick="togglePlay()">재생</button>
+          <div class="bpm-control">
+            <label>BPM</label>
+            <input type="range" class="bpm-slider" id="bpmSlider" min="40" max="200" value="90" oninput="updateBpm(this.value)">
+            <span class="bpm-value" id="bpmValue">90</span>
+          </div>
+        </div>
+        <div class="now-playing" id="nowPlaying"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-quiz">
+      <div class="quiz-section">
+        <div class="quiz-config">
+          <label>범위:</label>
+          <select id="quizRange">
+            <option value="natural">온음만 (도레미파솔라시)</option>
+            <option value="all">반음 포함</option>
+          </select>
+          <label>옥타브:</label>
+          <select id="quizOctave">
+            <option value="3">2옥타브 (가운데)</option>
+            <option value="all">전체 (1~3)</option>
+            <option value="2">1옥타브 (낮은)</option>
+            <option value="4">3옥타브 (높은)</option>
+          </select>
+        </div>
+        <button class="quiz-start-btn" id="quizStartBtn" onclick="startQuiz()">문제 내기</button>
+
+        <div class="quiz-status" id="quizStatus" style="display:none">
+          <div class="quiz-score" id="quizScore"></div>
+          <div class="quiz-prompt" id="quizPrompt">어떤 음일까요?</div>
+          <button class="quiz-replay-btn" onclick="replayQuiz()">다시 듣기</button>
+        </div>
+
+        <div class="quiz-feedback" id="quizFeedback"></div>
+
+        <div class="quiz-answer-grid" id="quizAnswerGrid" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Audio context
+    let audioCtx = null;
+    let currentOctave = 3;
+    let isPlaying = false;
+    let playTimeouts = [];
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // 계이름 → 반음 오프셋 (C 기준)
+    const NOTE_MAP = {
+      '도': 0, 'C': 0,
+      '도#': 1, 'C#': 1, '레♭': 1, 'D♭': 1, 'Db': 1,
+      '레': 2, 'D': 2,
+      '레#': 3, 'D#': 3, '미♭': 3, 'E♭': 3, 'Eb': 3,
+      '미': 4, 'E': 4,
+      '파': 5, 'F': 5,
+      '파#': 6, 'F#': 6, '솔♭': 6, 'G♭': 6, 'Gb': 6,
+      '솔': 7, 'G': 7,
+      '솔#': 8, 'G#': 8, '라♭': 8, 'A♭': 8, 'Ab': 8,
+      '라': 9, 'A': 9,
+      '라#': 10, 'A#': 10, '시♭': 10, 'B♭': 10, 'Bb': 10,
+      '시': 11, 'B': 11,
+    };
+
+    // MIDI 번호 계산
+    function noteToMidi(noteName, octave) {
+      const semitone = NOTE_MAP[noteName];
+      if (semitone === undefined) return null;
+      return (octave + 1) * 12 + semitone;
+    }
+
+    // 주파수 계산: A4 = 442Hz
+    function getFrequency(noteName, octave) {
+      const midi = noteToMidi(noteName, octave);
+      if (midi === null) return null;
+      return 442 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    // === 실제 첼로 샘플 재생 ===
+    // 출처: https://github.com/nbrosowsky/tonejs-instruments (CC BY 3.0)
+    const SAMPLE_BASE = 'https://nbrosowsky.github.io/tonejs-instruments/samples/cello/';
+    // 핵심 샘플만 로드 (나머지는 피치 시프트)
+    const SAMPLE_NOTES = {
+      36: 'C2', 39: 'Ds2', 42: 'Fs2', 45: 'A2',
+      48: 'C3', 51: 'Ds3', 54: 'Fs3', 57: 'A3',
+      60: 'C4', 63: 'Ds4', 66: 'Fs4', 69: 'A4',
+      72: 'C5'
+    };
+    // Fs2는 없으므로 F2 사용
+    const SAMPLE_FILE_MAP = {
+      'Fs2': 'F2' // Fs2 파일이 없어서 F2로 대체 (1반음 시프트)
+    };
+    const SAMPLE_MIDI_KEYS = Object.keys(SAMPLE_NOTES).map(Number).sort((a, b) => a - b);
+
+    let sampleBuffers = {}; // midi -> AudioBuffer
+    let samplesLoading = false;
+    let samplesLoaded = false;
+    let useSamples = true; // 샘플 사용 여부
+
+    async function loadSamples() {
+      if (samplesLoaded || samplesLoading) return;
+      samplesLoading = true;
+      const ctx = getAudioCtx();
+
+      const loadPromises = Object.entries(SAMPLE_NOTES).map(async ([midi, noteName]) => {
+        const fileName = SAMPLE_FILE_MAP[noteName] || noteName;
+        const url = SAMPLE_BASE + fileName + '.mp3';
+        try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          sampleBuffers[parseInt(midi)] = await ctx.decodeAudioData(arrayBuffer);
+        } catch (e) {
+          console.warn('샘플 로드 실패:', noteName, e);
+        }
+      });
+
+      await Promise.all(loadPromises);
+      samplesLoaded = true;
+      samplesLoading = false;
+      // 로딩 상태 업데이트
+      const indicator = document.getElementById('sampleStatus');
+      if (indicator) indicator.textContent = '샘플 로드 완료';
+    }
+
+    // 가장 가까운 샘플 찾기
+    function findNearestSample(midi) {
+      let nearest = SAMPLE_MIDI_KEYS[0];
+      let minDist = Math.abs(midi - nearest);
+      for (const key of SAMPLE_MIDI_KEYS) {
+        const dist = Math.abs(midi - key);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = key;
+        }
+      }
+      return nearest;
+    }
+
+    // 샘플 기반 재생
+    function playSampleNote(midi, duration = 0.8) {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+
+      const nearestMidi = findNearestSample(midi);
+      const buffer = sampleBuffers[nearestMidi];
+      if (!buffer) return;
+
+      // Fs2→F2 보정: SAMPLE_NOTES[42]='Fs2'이지만 실제 파일은 F2(midi 41)
+      let actualSampleMidi = nearestMidi;
+      if (nearestMidi === 42) actualSampleMidi = 41; // F2
+
+      const semitoneDiff = midi - actualSampleMidi;
+      const playbackRate = Math.pow(2, semitoneDiff / 12);
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.playbackRate.setValueAtTime(playbackRate, now);
+
+      // 게인 엔벨로프 (자연스러운 감쇠)
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.6, now);
+      const bufDuration = buffer.duration / playbackRate;
+      const actualDuration = Math.min(duration, bufDuration);
+      if (actualDuration > 0.3) {
+        gain.gain.setValueAtTime(0.6, now + actualDuration - 0.3);
+        gain.gain.linearRampToValueAtTime(0, now + actualDuration);
+      }
+
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(now);
+      source.stop(now + actualDuration);
+    }
+
+    // 합성 첼로 (폴백)
+    function playSynthNote(frequency, duration = 0.8) {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(frequency, now);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(frequency * 1.002, now);
+
+      const osc3 = ctx.createOscillator();
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(frequency * 0.5, now);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(Math.min(frequency * 3, 2000), now);
+      filter.Q.setValueAtTime(1.5, now);
+      filter.frequency.exponentialRampToValueAtTime(Math.min(frequency * 5, 3000), now + 0.05);
+      filter.frequency.exponentialRampToValueAtTime(Math.min(frequency * 2, 1500), now + 0.2);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.08);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.18);
+      gain.gain.linearRampToValueAtTime(0.2, now + duration - 0.3);
+      gain.gain.linearRampToValueAtTime(0, now + duration);
+
+      const subGain = ctx.createGain();
+      subGain.gain.setValueAtTime(0.08, now);
+
+      const vibrato = ctx.createOscillator();
+      const vibratoGain = ctx.createGain();
+      vibrato.frequency.setValueAtTime(5.5, now);
+      vibratoGain.gain.setValueAtTime(0, now);
+      vibratoGain.gain.linearRampToValueAtTime(frequency * 0.003, now + 0.3);
+      vibrato.connect(vibratoGain);
+      vibratoGain.connect(osc1.frequency);
+      vibratoGain.connect(osc2.frequency);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      osc3.connect(subGain);
+      subGain.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now); osc2.start(now); osc3.start(now); vibrato.start(now);
+      osc1.stop(now + duration); osc2.stop(now + duration);
+      osc3.stop(now + duration); vibrato.stop(now + duration);
+    }
+
+    // 통합 재생 함수
+    function playCelloNote(frequency, duration = 0.8, noteName, octave) {
+      if (useSamples && samplesLoaded && noteName !== undefined && octave !== undefined) {
+        const midi = noteToMidi(noteName, octave);
+        if (midi !== null) {
+          playSampleNote(midi, duration);
+          return;
+        }
+      }
+      playSynthNote(frequency, duration);
+    }
+
+    // 버튼으로 음 재생 (옥타브 지정)
+    function playNoteWithOctave(noteName, octave) {
+      const freq = getFrequency(noteName, octave);
+      if (freq) {
+        playCelloNote(freq, 0.8, noteName, octave);
+        const btn = document.querySelector(`.note-btn[data-note="${noteName}" ][data-octave="${octave}"]`);
+        if (btn) {
+          btn.classList.add('playing');
+          setTimeout(() => btn.classList.remove('playing'), 200);
+        }
+      }
+    }
+
+    // 3옥타브 버튼 그리드 생성
+    const NATURALS = ['도', '레', '미', '파', '솔', '라', '시'];
+    const SHARPS = [
+      { note: '도#', pos: 0 }, { note: '레#', pos: 1 },
+      { note: '파#', pos: 3 }, { note: '솔#', pos: 4 }, { note: '라#', pos: 5 }
+    ];
+    const OCTAVE_LABELS = { 2: '1옥타브 - 낮은', 3: '2옥타브 - 가운데', 4: '3옥타브 - 높은' };
+
+    function buildNoteGrid() {
+      const grid = document.getElementById('noteGrid');
+      grid.innerHTML = '';
+      [2, 3, 4].forEach((oct, idx) => {
+        const group = document.createElement('div');
+        group.className = 'octave-group';
+
+        const label = document.createElement('div');
+        label.className = 'octave-label';
+        label.textContent = OCTAVE_LABELS[oct];
+        group.appendChild(label);
+
+        // 반음 행
+        const sharpRow = document.createElement('div');
+        sharpRow.className = 'note-row sharps';
+        for (let i = 0; i < 7; i++) {
+          const sharp = SHARPS.find(s => s.pos === i);
+          if (sharp) {
+            const btn = document.createElement('button');
+            btn.className = 'note-btn sharp';
+            btn.dataset.note = sharp.note;
+            btn.dataset.octave = oct;
+            btn.textContent = sharp.note;
+            btn.onclick = () => playNoteWithOctave(sharp.note, oct);
+            sharpRow.appendChild(btn);
+          } else if (i === 2 || i === 6) {
+            // 미-파, 시 사이에 빈 공간
+            const spacer = document.createElement('div');
+            spacer.style.width = '38px';
+            sharpRow.appendChild(spacer);
+          }
+        }
+        group.appendChild(sharpRow);
+
+        // 온음 행
+        const naturalRow = document.createElement('div');
+        naturalRow.className = 'note-row';
+        NATURALS.forEach(note => {
+          const btn = document.createElement('button');
+          btn.className = 'note-btn natural';
+          btn.dataset.note = note;
+          btn.dataset.octave = oct;
+          btn.textContent = note;
+          btn.onclick = () => playNoteWithOctave(note, oct);
+          naturalRow.appendChild(btn);
+        });
+        group.appendChild(naturalRow);
+
+        if (idx < 2) {
+          const divider = document.createElement('div');
+          divider.className = 'octave-group-divider';
+          group.appendChild(divider);
+        }
+
+        grid.appendChild(group);
+      });
+    }
+
+    buildNoteGrid();
+
+    // 텍스트 파싱
+    // 사용자 옥타브: 1=낮은(C2), 2=가운데(C3), 3=높은(C4)
+    const DEFAULT_USER_OCTAVE = 2; // 기본값 = 가운데
+    function userOctaveToReal(userOct) { return userOct + 1; }
+
+    function parseMelody(text) {
+      const tokens = text.trim().split(/[\s,]+/);
+      const notes = [];
+      for (const token of tokens) {
+        if (!token) continue;
+        // 옥타브 지정: 도3, 레#2, C1 등 (1=낮은, 2=가운데, 3=높은)
+        const match = token.match(/^(.+?)(\d)?$/);
+        if (match) {
+          const noteName = match[1];
+          const userOct = match[2] ? parseInt(match[2]) : DEFAULT_USER_OCTAVE;
+          const realOctave = userOctaveToReal(userOct);
+          if (NOTE_MAP[noteName] !== undefined) {
+            notes.push({ name: noteName, octave: realOctave, display: token });
+          }
+        }
+      }
+      return notes;
+    }
+
+    // 멜로디 재생
+    function togglePlay() {
+      if (isPlaying) {
+        stopPlay();
+        return;
+      }
+      const text = document.getElementById('melodyInput').value;
+      const notes = parseMelody(text);
+      if (notes.length === 0) return;
+
+      isPlaying = true;
+      const btn = document.getElementById('playBtn');
+      btn.textContent = '정지';
+      btn.classList.add('stopping');
+
+      const bpm = parseInt(document.getElementById('bpmSlider').value);
+      const interval = 60000 / bpm;
+
+      notes.forEach((note, i) => {
+        const tid = setTimeout(() => {
+          const freq = getFrequency(note.name, note.octave);
+          if (freq) {
+            playCelloNote(freq, Math.min(interval / 1000 * 0.9, 1.5), note.name, note.octave);
+          }
+          document.getElementById('nowPlaying').innerHTML =
+            `<span class="current">${note.display}</span> (${i + 1}/${notes.length})`;
+
+          // 해당 버튼 하이라이트
+          const noteBtn = document.querySelector(`.note-btn[data-note="${note.name}"][data-octave="${note.octave}"]`);
+          if (noteBtn) {
+            noteBtn.classList.add('playing');
+            setTimeout(() => noteBtn.classList.remove('playing'), 200);
+          }
+
+          if (i === notes.length - 1) {
+            setTimeout(() => stopPlay(), interval);
+          }
+        }, i * interval);
+        playTimeouts.push(tid);
+      });
+    }
+
+    function stopPlay() {
+      isPlaying = false;
+      playTimeouts.forEach(clearTimeout);
+      playTimeouts = [];
+      const btn = document.getElementById('playBtn');
+      btn.textContent = '재생';
+      btn.classList.remove('stopping');
+      document.getElementById('nowPlaying').textContent = '';
+    }
+
+    function updateBpm(val) {
+      document.getElementById('bpmValue').textContent = val;
+    }
+
+    // 탭 전환
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        const tabs = ['play', 'melody', 'quiz'];
+        b.classList.toggle('active', tabs[i] === name);
+      });
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      if (name === 'quiz') buildQuizAnswerGrid();
+    }
+
+    // === 퀴즈 ===
+    let quizAnswer = null;
+    let quizCorrect = 0;
+    let quizTotal = 0;
+    let quizActive = false;
+
+    const ALL_NOTES = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
+
+    function getQuizNotes() {
+      const range = document.getElementById('quizRange').value;
+      return range === 'natural' ? NATURALS : ALL_NOTES;
+    }
+
+    function getQuizOctaves() {
+      const val = document.getElementById('quizOctave').value;
+      return val === 'all' ? [2, 3, 4] : [parseInt(val)];
+    }
+
+    function buildQuizAnswerGrid() {
+      const grid = document.getElementById('quizAnswerGrid');
+      const notes = getQuizNotes();
+      grid.innerHTML = '';
+
+      // 반음 행 (반음 포함 모드일 때만)
+      if (notes.length > 7) {
+        const sharpRow = document.createElement('div');
+        sharpRow.className = 'quiz-answer-row';
+        ['도#', '레#', '', '파#', '솔#', '라#'].forEach(n => {
+          if (n) {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-ans-btn';
+            btn.textContent = n;
+            btn.onclick = () => submitQuizAnswer(n);
+            sharpRow.appendChild(btn);
+          } else {
+            const spacer = document.createElement('div');
+            spacer.style.width = '50px';
+            sharpRow.appendChild(spacer);
+          }
+        });
+        grid.appendChild(sharpRow);
+      }
+
+      // 온음 행
+      const naturalRow = document.createElement('div');
+      naturalRow.className = 'quiz-answer-row';
+      NATURALS.forEach(n => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-ans-btn';
+        btn.textContent = n;
+        btn.onclick = () => submitQuizAnswer(n);
+        naturalRow.appendChild(btn);
+      });
+      grid.appendChild(naturalRow);
+    }
+
+    function startQuiz() {
+      quizCorrect = 0;
+      quizTotal = 0;
+      quizActive = true;
+      document.getElementById('quizStartBtn').textContent = '다시 시작';
+      document.getElementById('quizStatus').style.display = '';
+      document.getElementById('quizAnswerGrid').style.display = '';
+      buildQuizAnswerGrid();
+      nextQuizQuestion();
+    }
+
+    function nextQuizQuestion() {
+      const notes = getQuizNotes();
+      const octaves = getQuizOctaves();
+      const note = notes[Math.floor(Math.random() * notes.length)];
+      const octave = octaves[Math.floor(Math.random() * octaves.length)];
+      quizAnswer = { note, octave };
+      quizTotal++;
+
+      document.getElementById('quizScore').textContent =
+        `${quizCorrect}/${quizTotal - 1} 정답`;
+      document.getElementById('quizPrompt').textContent = '어떤 음일까요?';
+      document.getElementById('quizFeedback').textContent = '';
+      document.getElementById('quizFeedback').className = 'quiz-feedback';
+
+      // 버튼 상태 초기화
+      document.querySelectorAll('.quiz-ans-btn').forEach(b => {
+        b.className = 'quiz-ans-btn';
+        b.disabled = false;
+      });
+
+      // 음 재생
+      const freq = getFrequency(note, octave);
+      if (freq) playCelloNote(freq, 1.2, note, octave);
+    }
+
+    function replayQuiz() {
+      if (!quizAnswer) return;
+      const freq = getFrequency(quizAnswer.note, quizAnswer.octave);
+      if (freq) playCelloNote(freq, 1.2, quizAnswer.note, quizAnswer.octave);
+    }
+
+    function submitQuizAnswer(note) {
+      if (!quizActive || !quizAnswer) return;
+
+      const correct = note === quizAnswer.note;
+      const feedback = document.getElementById('quizFeedback');
+      const octLabel = quizAnswer.octave === 2 ? '1' : quizAnswer.octave === 3 ? '2' : '3';
+
+      // 정답 버튼 찾기
+      const allBtns = document.querySelectorAll('.quiz-ans-btn');
+      allBtns.forEach(b => b.disabled = true);
+
+      if (correct) {
+        quizCorrect++;
+        feedback.textContent = '정답!';
+        feedback.className = 'quiz-feedback correct';
+        // 맞춘 버튼 초록색
+        allBtns.forEach(b => {
+          if (b.textContent === note) b.classList.add('correct-flash');
+        });
+      } else {
+        feedback.textContent = `오답! 정답: ${quizAnswer.note} (${octLabel}옥타브)`;
+        feedback.className = 'quiz-feedback wrong';
+        // 틀린 버튼 빨간색, 정답 버튼 초록색
+        allBtns.forEach(b => {
+          if (b.textContent === note) b.classList.add('wrong-flash');
+          if (b.textContent === quizAnswer.note) b.classList.add('correct-flash');
+        });
+        // 정답 음 재생
+        const freq = getFrequency(quizAnswer.note, quizAnswer.octave);
+        if (freq) setTimeout(() => playCelloNote(freq, 1.0, quizAnswer.note, quizAnswer.octave), 500);
+      }
+
+      document.getElementById('quizScore').textContent =
+        `${quizCorrect}/${quizTotal} 정답`;
+
+      // 다음 문제
+      setTimeout(() => nextQuizQuestion(), correct ? 1200 : 2500);
+    }
+
+    // 음원 모드 전환
+    function setSoundMode(useSampleMode) {
+      useSamples = useSampleMode;
+      document.getElementById('btnSample').classList.toggle('active', useSampleMode);
+      document.getElementById('btnSynth').classList.toggle('active', !useSampleMode);
+      if (useSampleMode && !samplesLoaded && !samplesLoading) {
+        document.getElementById('sampleStatus').textContent = '로딩 중...';
+        loadSamples().then(() => {
+          document.getElementById('sampleStatus').textContent = '로드 완료';
+          setTimeout(() => { document.getElementById('sampleStatus').textContent = ''; }, 2000);
+        });
+      }
+    }
+
+    // 페이지 로드 시 샘플 자동 로딩
+    document.getElementById('sampleStatus').textContent = '로딩 중...';
+    loadSamples().then(() => {
+      document.getElementById('sampleStatus').textContent = '로드 완료';
+      setTimeout(() => { document.getElementById('sampleStatus').textContent = ''; }, 2000);
+    }).catch(() => {
+      document.getElementById('sampleStatus').textContent = '로드 실패';
+      setSoundMode(false);
+    });
+
+    // Service Worker 등록
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
