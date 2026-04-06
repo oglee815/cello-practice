@@ -356,6 +356,48 @@
     .quiz-feedback.correct { color: #4caf50; }
     .quiz-feedback.wrong { color: #e05050; }
 
+    .quiz-streak {
+      text-align: center;
+      font-size: 13px;
+      color: #8a7060;
+      margin-bottom: 4px;
+    }
+    .quiz-streak .count { color: #d4a574; font-weight: 700; }
+
+    .quiz-clear {
+      text-align: center;
+      padding: 24px 16px;
+      margin: 16px 0;
+      background: linear-gradient(135deg, #1a3a1a, #2a5a2a);
+      border: 2px solid #4caf50;
+      border-radius: 12px;
+      animation: clearPulse 1s ease-in-out 3;
+    }
+    .quiz-clear h2 {
+      font-size: 28px;
+      color: #4caf50;
+      margin-bottom: 4px;
+    }
+    .quiz-clear p {
+      font-size: 14px;
+      color: #8fbc8f;
+    }
+    .quiz-clear button {
+      margin-top: 12px;
+      background: linear-gradient(180deg, #2a6b30, #1a5a20);
+      border: 2px solid #4caf50;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    @keyframes clearPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(76,175,80,0.3); }
+      50% { box-shadow: 0 0 30px rgba(76,175,80,0.6); }
+    }
+
     .quiz-answer-grid {
       margin: 12px 0;
     }
@@ -439,21 +481,23 @@
           </select>
           <label>옥타브:</label>
           <select id="quizOctave">
-            <option value="3">2옥타브 (가운데)</option>
-            <option value="all">전체 (1~3)</option>
             <option value="2">1옥타브 (낮은)</option>
+            <option value="3">2옥타브 (가운데)</option>
             <option value="4">3옥타브 (높은)</option>
+            <option value="all">전체 (1~3)</option>
           </select>
         </div>
         <button class="quiz-start-btn" id="quizStartBtn" onclick="startQuiz()">문제 내기</button>
 
         <div class="quiz-status" id="quizStatus" style="display:none">
           <div class="quiz-score" id="quizScore"></div>
+          <div class="quiz-streak" id="quizStreak"></div>
           <div class="quiz-prompt" id="quizPrompt">어떤 음일까요?</div>
           <button class="quiz-replay-btn" onclick="replayQuiz()">다시 듣기</button>
         </div>
 
         <div class="quiz-feedback" id="quizFeedback"></div>
+        <div id="quizClear" style="display:none"></div>
 
         <div class="quiz-answer-grid" id="quizAnswerGrid" style="display:none"></div>
       </div>
@@ -847,6 +891,8 @@
     let quizCorrect = 0;
     let quizTotal = 0;
     let quizActive = false;
+    let quizStreak = 0;
+    const CLEAR_GOAL = 10;
 
     const ALL_NOTES = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
 
@@ -901,10 +947,12 @@
     function startQuiz() {
       quizCorrect = 0;
       quizTotal = 0;
+      quizStreak = 0;
       quizActive = true;
       document.getElementById('quizStartBtn').textContent = '다시 시작';
       document.getElementById('quizStatus').style.display = '';
       document.getElementById('quizAnswerGrid').style.display = '';
+      document.getElementById('quizClear').style.display = 'none';
       buildQuizAnswerGrid();
       nextQuizQuestion();
     }
@@ -919,6 +967,8 @@
 
       document.getElementById('quizScore').textContent =
         `${quizCorrect}/${quizTotal - 1} 정답`;
+      document.getElementById('quizStreak').innerHTML =
+        `연속 정답: <span class="count">${quizStreak}</span> / ${CLEAR_GOAL}`;
       document.getElementById('quizPrompt').textContent = '어떤 음일까요?';
       document.getElementById('quizFeedback').textContent = '';
       document.getElementById('quizFeedback').className = 'quiz-feedback';
@@ -953,27 +1003,44 @@
 
       if (correct) {
         quizCorrect++;
+        quizStreak++;
         feedback.textContent = '정답!';
         feedback.className = 'quiz-feedback correct';
-        // 맞춘 버튼 초록색
         allBtns.forEach(b => {
           if (b.textContent === note) b.classList.add('correct-flash');
         });
       } else {
+        quizStreak = 0;
         feedback.textContent = `오답! 정답: ${quizAnswer.note} (${octLabel}옥타브)`;
         feedback.className = 'quiz-feedback wrong';
-        // 틀린 버튼 빨간색, 정답 버튼 초록색
         allBtns.forEach(b => {
           if (b.textContent === note) b.classList.add('wrong-flash');
           if (b.textContent === quizAnswer.note) b.classList.add('correct-flash');
         });
-        // 정답 음 재생
         const freq = getFrequency(quizAnswer.note, quizAnswer.octave);
         if (freq) setTimeout(() => playCelloNote(freq, 1.0, quizAnswer.note, quizAnswer.octave), 500);
       }
 
       document.getElementById('quizScore').textContent =
         `${quizCorrect}/${quizTotal} 정답`;
+      document.getElementById('quizStreak').innerHTML =
+        `연속 정답: <span class="count">${quizStreak}</span> / ${CLEAR_GOAL}`;
+
+      // 클리어 체크
+      if (quizStreak >= CLEAR_GOAL) {
+        quizActive = false;
+        const clearDiv = document.getElementById('quizClear');
+        clearDiv.style.display = '';
+        clearDiv.innerHTML = `<div class="quiz-clear">
+          <h2>CLEAR!</h2>
+          <p>${CLEAR_GOAL}연속 정답 달성!</p>
+          <p>총 ${quizCorrect}/${quizTotal} 정답</p>
+          <button onclick="startQuiz()">다시 도전</button>
+        </div>`;
+        document.getElementById('quizStatus').style.display = 'none';
+        document.getElementById('quizAnswerGrid').style.display = 'none';
+        return;
+      }
 
       // 다음 문제
       setTimeout(() => nextQuizQuestion(), correct ? 1200 : 2500);
