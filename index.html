@@ -552,19 +552,19 @@
     }
 
     // === 실제 첼로 샘플 재생 ===
-    // 출처: https://github.com/nbrosowsky/tonejs-instruments (CC BY 3.0)
-    const SAMPLE_BASE = 'https://nbrosowsky.github.io/tonejs-instruments/samples/cello/';
-    // 핵심 샘플만 로드 (나머지는 피치 시프트)
+    // 로컬 녹음 샘플 (audio/trimmed/{옥타브}{계이름}.mp3)
+    // 옥타브: 1=낮은(real 2), 2=가운데(real 3), 3=높은(real 4)
+    const SAMPLE_BASE = 'audio/trimmed/';
+    // midi -> 파일명 (확장자 제외)
     const SAMPLE_NOTES = {
-      36: 'C2', 39: 'Ds2', 42: 'Fs2', 45: 'A2',
-      48: 'C3', 51: 'Ds3', 54: 'Fs3', 57: 'A3',
-      60: 'C4', 63: 'Ds4', 66: 'Fs4', 69: 'A4',
-      72: 'C5'
+      // 1옥타브 (낮은, real octave 2)
+      36: '1도', 38: '1레', 40: '1미', 41: '1파', 43: '1솔', 45: '1라', 47: '1시',
+      // 2옥타브 (가운데, real octave 3)
+      48: '2도', 50: '2레', 52: '2미', 53: '2파', 55: '2솔', 57: '2라', 59: '2시',
+      // 3옥타브 (높은, real octave 4)
+      60: '3도', 62: '3레', 64: '3미', 65: '3파', 67: '3솔'
     };
-    // Fs2는 없으므로 F2 사용
-    const SAMPLE_FILE_MAP = {
-      'Fs2': 'F2' // Fs2 파일이 없어서 F2로 대체 (1반음 시프트)
-    };
+    const SAMPLE_FILE_MAP = {};
     const SAMPLE_MIDI_KEYS = Object.keys(SAMPLE_NOTES).map(Number).sort((a, b) => a - b);
 
     let sampleBuffers = {}; // midi -> AudioBuffer
@@ -579,7 +579,7 @@
 
       const loadPromises = Object.entries(SAMPLE_NOTES).map(async ([midi, noteName]) => {
         const fileName = SAMPLE_FILE_MAP[noteName] || noteName;
-        const url = SAMPLE_BASE + fileName + '.mp3';
+        const url = SAMPLE_BASE + encodeURIComponent(fileName) + '.mp3';
         try {
           const response = await fetch(url);
           const arrayBuffer = await response.arrayBuffer();
@@ -620,11 +620,7 @@
       const buffer = sampleBuffers[nearestMidi];
       if (!buffer) return;
 
-      // Fs2→F2 보정: SAMPLE_NOTES[42]='Fs2'이지만 실제 파일은 F2(midi 41)
-      let actualSampleMidi = nearestMidi;
-      if (nearestMidi === 42) actualSampleMidi = 41; // F2
-
-      const semitoneDiff = midi - actualSampleMidi;
+      const semitoneDiff = midi - nearestMidi;
       const playbackRate = Math.pow(2, semitoneDiff / 12);
 
       const source = ctx.createBufferSource();

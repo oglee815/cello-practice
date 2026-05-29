@@ -1,5 +1,10 @@
-const CACHE_NAME = 'cello-practice-v1';
-const ASSETS = ['./index.html', './manifest.json'];
+const CACHE_NAME = 'cello-practice-v2';
+const SAMPLE_FILES = [
+  '1도','1레','1미','1파','1솔','1라','1시',
+  '2도','2레','2미','2파','2솔','2라','2시',
+  '3도','3레','3미','3파','3솔'
+].map(n => './audio/trimmed/' + encodeURIComponent(n) + '.mp3');
+const ASSETS = ['./index.html', './manifest.json', ...SAMPLE_FILES];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
