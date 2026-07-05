@@ -432,61 +432,44 @@
     }
 
     /* 튜너 */
-    .tuner-section { padding-top: 16px; text-align: center; }
-    .tuner-start-btn {
-      background: linear-gradient(180deg, #2a6b30, #1a5a20);
-      border: 2px solid #3a8a40;
-      color: #fff;
-      padding: 10px 24px;
-      border-radius: 10px;
-      font-size: 16px;
-      cursor: pointer;
-      font-weight: 600;
-      width: 100%;
-      transition: all 0.2s;
-    }
-    .tuner-start-btn.running {
-      background: linear-gradient(180deg, #8a2020, #6a1515);
-      border-color: #aa4040;
-    }
-    .tuner-start-btn:active { transform: scale(0.97); }
+    .tuner-section { padding-top: 12px; text-align: center; }
     .tuner-display {
-      margin-top: 16px;
       background: #241610;
       border: 2px solid #3a2518;
       border-radius: 14px;
-      padding: 20px 12px;
+      padding: 24px 12px;
     }
     .tuner-freq {
-      font-size: 13px;
-      color: #8a7060;
-      min-height: 18px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #b09070;
+      min-height: 30px;
     }
     .tuner-note {
-      font-size: 64px;
+      font-size: 130px;
       font-weight: 800;
       color: #e8d5c4;
-      min-height: 80px;
-      line-height: 80px;
+      min-height: 150px;
+      line-height: 150px;
     }
     .tuner-note .oct {
-      font-size: 20px;
-      color: #8a7060;
+      font-size: 36px;
+      color: #a08060;
       vertical-align: super;
     }
     .tuner-note.in-tune { color: #4caf50; }
     .tuner-gauge {
       position: relative;
-      height: 56px;
-      margin: 12px 8px 4px;
+      height: 90px;
+      margin: 16px 8px 6px;
     }
     .tuner-scale {
       position: absolute;
-      top: 24px;
+      top: 38px;
       left: 0; right: 0;
-      height: 6px;
+      height: 14px;
       background: #3a2518;
-      border-radius: 3px;
+      border-radius: 7px;
     }
     .tuner-scale .center-zone {
       position: absolute;
@@ -494,38 +477,44 @@
       width: 20%;
       height: 100%;
       background: #2a5a2a;
-      border-radius: 3px;
+      border-radius: 7px;
     }
     .tuner-needle {
       position: absolute;
-      top: 8px;
+      top: 12px;
       left: 50%;
-      width: 4px;
-      height: 38px;
+      width: 8px;
+      height: 66px;
       background: #e05050;
-      border-radius: 2px;
+      border-radius: 4px;
       transform: translateX(-50%);
       transition: left 0.1s ease-out, background 0.1s;
+      box-shadow: 0 0 8px rgba(224,80,80,0.5);
     }
-    .tuner-needle.in-tune { background: #4caf50; }
+    .tuner-needle.in-tune {
+      background: #4caf50;
+      box-shadow: 0 0 12px rgba(76,175,80,0.7);
+    }
     .tuner-cents {
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 48px;
+      font-weight: 800;
       color: #d4a574;
-      min-height: 30px;
+      min-height: 60px;
     }
     .tuner-cents.in-tune { color: #4caf50; }
     .tuner-labels {
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
-      color: #6a5040;
+      font-size: 16px;
+      font-weight: 600;
+      color: #8a6a50;
       margin: 0 8px;
     }
-    .tuner-hint {
+    .tuner-status {
       margin-top: 12px;
-      font-size: 12px;
+      font-size: 16px;
       color: #8a7060;
+      min-height: 22px;
     }
   </style>
 </head>
@@ -603,7 +592,6 @@
 
     <div class="tab-content" id="tab-tuner">
       <div class="tuner-section">
-        <button class="tuner-start-btn" id="tunerBtn" onclick="toggleTuner()">튜너 시작</button>
         <div class="tuner-display">
           <div class="tuner-freq" id="tunerFreq">A4 = 442Hz</div>
           <div class="tuner-note" id="tunerNote">-</div>
@@ -614,7 +602,7 @@
           <div class="tuner-labels"><span>-50</span><span>-25</span><span>0</span><span>+25</span><span>+50</span></div>
           <div class="tuner-cents" id="tunerCents"></div>
         </div>
-        <div class="tuner-hint">첼로를 연주하면 음과 음정 오차(센트)가 표시됩니다.<br>±10센트 안이면 초록색 = 정확한 음정!</div>
+        <div class="tuner-status" id="tunerStatus"></div>
       </div>
     </div>
   </div>
@@ -995,7 +983,8 @@
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'quiz') buildQuizAnswerGrid();
-      if (name !== 'tuner' && typeof tunerRunning !== 'undefined' && tunerRunning) stopTuner();
+      if (name === 'tuner') startTuner();
+      else if (typeof tunerRunning !== 'undefined' && tunerRunning) stopTuner();
     }
 
     // === 퀴즈 ===
@@ -1169,15 +1158,15 @@
 
     const SEMITONE_NAMES = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
 
-    async function toggleTuner() {
-      if (tunerRunning) { stopTuner(); return; }
-      const btn = document.getElementById('tunerBtn');
+    async function startTuner() {
+      if (tunerRunning) return;
+      document.getElementById('tunerStatus').textContent = '마이크 연결 중...';
       try {
         tunerStream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
         });
       } catch (e) {
-        document.getElementById('tunerFreq').textContent = '마이크 권한이 필요합니다';
+        document.getElementById('tunerStatus').textContent = '마이크 권한을 허용해주세요';
         return;
       }
       const ctx = getAudioCtx();
@@ -1188,8 +1177,8 @@
       tunerBuf = new Float32Array(tunerAnalyser.fftSize);
 
       tunerRunning = true;
-      btn.textContent = '튜너 정지';
-      btn.classList.add('running');
+      document.getElementById('tunerStatus').textContent = '';
+      document.getElementById('tunerFreq').textContent = '연주해 보세요...';
       tunerLoop();
     }
 
@@ -1201,14 +1190,12 @@
         tunerStream = null;
       }
       tunerAnalyser = null;
-      const btn = document.getElementById('tunerBtn');
-      btn.textContent = '튜너 시작';
-      btn.classList.remove('running');
       document.getElementById('tunerNote').textContent = '-';
       document.getElementById('tunerNote').className = 'tuner-note';
       document.getElementById('tunerCents').textContent = '';
       document.getElementById('tunerFreq').textContent = 'A4 = 442Hz';
       document.getElementById('tunerNeedle').style.left = '50%';
+      document.getElementById('tunerStatus').textContent = '';
     }
 
     // 자기상관(ACF2+) 피치 검출

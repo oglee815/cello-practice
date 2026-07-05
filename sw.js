@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cello-practice-v5';
+const CACHE_NAME = 'cello-practice-v6';
 const SAMPLE_FILES = [
   '1도','1레','1미','1파','1솔','1라','1시',
   '2도','2레','2미','2파','2솔','2라','2시',
