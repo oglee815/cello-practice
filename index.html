@@ -430,6 +430,103 @@
       border-color: #e05050;
       color: #fff;
     }
+
+    /* 튜너 */
+    .tuner-section { padding-top: 16px; text-align: center; }
+    .tuner-start-btn {
+      background: linear-gradient(180deg, #2a6b30, #1a5a20);
+      border: 2px solid #3a8a40;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+      transition: all 0.2s;
+    }
+    .tuner-start-btn.running {
+      background: linear-gradient(180deg, #8a2020, #6a1515);
+      border-color: #aa4040;
+    }
+    .tuner-start-btn:active { transform: scale(0.97); }
+    .tuner-display {
+      margin-top: 16px;
+      background: #241610;
+      border: 2px solid #3a2518;
+      border-radius: 14px;
+      padding: 20px 12px;
+    }
+    .tuner-freq {
+      font-size: 13px;
+      color: #8a7060;
+      min-height: 18px;
+    }
+    .tuner-note {
+      font-size: 64px;
+      font-weight: 800;
+      color: #e8d5c4;
+      min-height: 80px;
+      line-height: 80px;
+    }
+    .tuner-note .oct {
+      font-size: 20px;
+      color: #8a7060;
+      vertical-align: super;
+    }
+    .tuner-note.in-tune { color: #4caf50; }
+    .tuner-gauge {
+      position: relative;
+      height: 56px;
+      margin: 12px 8px 4px;
+    }
+    .tuner-scale {
+      position: absolute;
+      top: 24px;
+      left: 0; right: 0;
+      height: 6px;
+      background: #3a2518;
+      border-radius: 3px;
+    }
+    .tuner-scale .center-zone {
+      position: absolute;
+      left: 40%;
+      width: 20%;
+      height: 100%;
+      background: #2a5a2a;
+      border-radius: 3px;
+    }
+    .tuner-needle {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      width: 4px;
+      height: 38px;
+      background: #e05050;
+      border-radius: 2px;
+      transform: translateX(-50%);
+      transition: left 0.1s ease-out, background 0.1s;
+    }
+    .tuner-needle.in-tune { background: #4caf50; }
+    .tuner-cents {
+      font-size: 22px;
+      font-weight: 700;
+      color: #d4a574;
+      min-height: 30px;
+    }
+    .tuner-cents.in-tune { color: #4caf50; }
+    .tuner-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #6a5040;
+      margin: 0 8px;
+    }
+    .tuner-hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #8a7060;
+    }
   </style>
 </head>
 <body>
@@ -448,6 +545,7 @@
       <button class="tab-btn active" onclick="switchTab('play')">연주</button>
       <button class="tab-btn" onclick="switchTab('melody')">멜로디</button>
       <button class="tab-btn" onclick="switchTab('quiz')">퀴즈</button>
+      <button class="tab-btn" onclick="switchTab('tuner')">튜너</button>
     </div>
 
     <div class="tab-content active" id="tab-play">
@@ -500,6 +598,23 @@
         <div id="quizClear" style="display:none"></div>
 
         <div class="quiz-answer-grid" id="quizAnswerGrid" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-tuner">
+      <div class="tuner-section">
+        <button class="tuner-start-btn" id="tunerBtn" onclick="toggleTuner()">튜너 시작</button>
+        <div class="tuner-display">
+          <div class="tuner-freq" id="tunerFreq">A4 = 442Hz</div>
+          <div class="tuner-note" id="tunerNote">-</div>
+          <div class="tuner-gauge">
+            <div class="tuner-scale"><div class="center-zone"></div></div>
+            <div class="tuner-needle" id="tunerNeedle"></div>
+          </div>
+          <div class="tuner-labels"><span>-50</span><span>-25</span><span>0</span><span>+25</span><span>+50</span></div>
+          <div class="tuner-cents" id="tunerCents"></div>
+        </div>
+        <div class="tuner-hint">첼로를 연주하면 음과 음정 오차(센트)가 표시됩니다.<br>±10센트 안이면 초록색 = 정확한 음정!</div>
       </div>
     </div>
   </div>
@@ -874,12 +989,13 @@
     // 탭 전환
     function switchTab(name) {
       document.querySelectorAll('.tab-btn').forEach((b, i) => {
-        const tabs = ['play', 'melody', 'quiz'];
+        const tabs = ['play', 'melody', 'quiz', 'tuner'];
         b.classList.toggle('active', tabs[i] === name);
       });
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'quiz') buildQuizAnswerGrid();
+      if (name !== 'tuner' && typeof tunerRunning !== 'undefined' && tunerRunning) stopTuner();
     }
 
     // === 퀴즈 ===
@@ -1040,6 +1156,153 @@
 
       // 다음 문제
       setTimeout(() => nextQuizQuestion(), correct ? 1200 : 2500);
+    }
+
+    // === 튜너 ===
+    let tunerRunning = false;
+    let tunerStream = null;
+    let tunerAnalyser = null;
+    let tunerRaf = null;
+    let tunerBuf = null;
+    // 표시 안정화용
+    let lastGoodDisplay = 0;
+
+    const SEMITONE_NAMES = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
+
+    async function toggleTuner() {
+      if (tunerRunning) { stopTuner(); return; }
+      const btn = document.getElementById('tunerBtn');
+      try {
+        tunerStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+      } catch (e) {
+        document.getElementById('tunerFreq').textContent = '마이크 권한이 필요합니다';
+        return;
+      }
+      const ctx = getAudioCtx();
+      const source = ctx.createMediaStreamSource(tunerStream);
+      tunerAnalyser = ctx.createAnalyser();
+      tunerAnalyser.fftSize = 4096; // 첼로 저음(C2=65Hz)까지 감지
+      source.connect(tunerAnalyser);
+      tunerBuf = new Float32Array(tunerAnalyser.fftSize);
+
+      tunerRunning = true;
+      btn.textContent = '튜너 정지';
+      btn.classList.add('running');
+      tunerLoop();
+    }
+
+    function stopTuner() {
+      tunerRunning = false;
+      if (tunerRaf) cancelAnimationFrame(tunerRaf);
+      if (tunerStream) {
+        tunerStream.getTracks().forEach(t => t.stop());
+        tunerStream = null;
+      }
+      tunerAnalyser = null;
+      const btn = document.getElementById('tunerBtn');
+      btn.textContent = '튜너 시작';
+      btn.classList.remove('running');
+      document.getElementById('tunerNote').textContent = '-';
+      document.getElementById('tunerNote').className = 'tuner-note';
+      document.getElementById('tunerCents').textContent = '';
+      document.getElementById('tunerFreq').textContent = 'A4 = 442Hz';
+      document.getElementById('tunerNeedle').style.left = '50%';
+    }
+
+    // 자기상관(ACF2+) 피치 검출
+    function detectPitch(buf, sampleRate) {
+      const SIZE = buf.length;
+      // 음량 체크
+      let rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.01) return -1; // 너무 조용함
+
+      // 앞뒤 무음 트림
+      let r1 = 0, r2 = SIZE - 1;
+      const thres = 0.2;
+      for (let i = 0; i < SIZE / 2; i++) {
+        if (Math.abs(buf[i]) < thres) { r1 = i; } else break;
+      }
+      for (let i = 1; i < SIZE / 2; i++) {
+        if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; } else break;
+      }
+      const trimmed = buf.slice(r1, r2);
+      const N = trimmed.length;
+      if (N < 128) return -1;
+
+      // 자기상관
+      const c = new Float32Array(N);
+      for (let lag = 0; lag < N; lag++) {
+        let sum = 0;
+        for (let i = 0; i < N - lag; i++) sum += trimmed[i] * trimmed[i + lag];
+        c[lag] = sum;
+      }
+
+      // 첫 하강 구간 지나기
+      let d = 0;
+      while (d < N - 1 && c[d] > c[d + 1]) d++;
+      // 최대 피크 찾기
+      let maxval = -1, maxpos = -1;
+      for (let i = d; i < N; i++) {
+        if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+      }
+      if (maxpos <= 0) return -1;
+
+      // 포물선 보간으로 정밀도 향상
+      let T0 = maxpos;
+      const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1] || 0;
+      const a = (x1 + x3 - 2 * x2) / 2;
+      const b = (x3 - x1) / 2;
+      if (a) T0 = T0 - b / (2 * a);
+
+      const freq = sampleRate / T0;
+      // 첼로 범위 밖이면 무시 (C2=65Hz ~ 대략 A5=880Hz)
+      if (freq < 55 || freq > 1100) return -1;
+      return freq;
+    }
+
+    function tunerLoop() {
+      if (!tunerRunning || !tunerAnalyser) return;
+      tunerAnalyser.getFloatTimeDomainData(tunerBuf);
+      const freq = detectPitch(tunerBuf, getAudioCtx().sampleRate);
+
+      const noteEl = document.getElementById('tunerNote');
+      const centsEl = document.getElementById('tunerCents');
+      const freqEl = document.getElementById('tunerFreq');
+      const needle = document.getElementById('tunerNeedle');
+
+      if (freq > 0) {
+        // A4=442Hz 기준 MIDI 계산
+        const midiFloat = 69 + 12 * Math.log2(freq / 442);
+        const midi = Math.round(midiFloat);
+        const cents = Math.round((midiFloat - midi) * 100);
+        const name = SEMITONE_NAMES[((midi % 12) + 12) % 12];
+        const realOct = Math.floor(midi / 12) - 1;
+        const userOct = realOct - 1; // real 2 → 표시 1옥타브
+
+        const inTune = Math.abs(cents) <= 10;
+        noteEl.innerHTML = name + (userOct >= 1 && userOct <= 3 ? `<span class="oct">${userOct}옥</span>` : '');
+        noteEl.className = 'tuner-note' + (inTune ? ' in-tune' : '');
+        centsEl.textContent = (cents > 0 ? '+' : '') + cents + '¢';
+        centsEl.className = 'tuner-cents' + (inTune ? ' in-tune' : '');
+        freqEl.textContent = freq.toFixed(1) + ' Hz';
+        // 바늘: -50~+50센트 → 0~100%
+        const pos = Math.max(0, Math.min(100, 50 + cents));
+        needle.style.left = pos + '%';
+        needle.className = 'tuner-needle' + (inTune ? ' in-tune' : '');
+        lastGoodDisplay = Date.now();
+      } else if (Date.now() - lastGoodDisplay > 800) {
+        // 0.8초 이상 감지 안 되면 초기화
+        noteEl.textContent = '-';
+        noteEl.className = 'tuner-note';
+        centsEl.textContent = '';
+        freqEl.textContent = '연주해 보세요...';
+      }
+
+      tunerRaf = requestAnimationFrame(tunerLoop);
     }
 
     // 음원 모드 전환
