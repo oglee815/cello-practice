@@ -592,6 +592,12 @@
 
     <div class="tab-content" id="tab-tuner">
       <div class="tuner-section">
+        <div class="sound-toggle" style="margin-bottom:12px">
+          <span style="font-size:14px;color:#8a7060">피드백:</span>
+          <button class="sound-toggle-btn active" id="fbOff" onclick="setFeedbackMode('off')">없음</button>
+          <button class="sound-toggle-btn" id="fbVoice" onclick="setFeedbackMode('voice')">음성</button>
+          <button class="sound-toggle-btn" id="fbTone" onclick="setFeedbackMode('tone')">효과음</button>
+        </div>
         <div class="tuner-display">
           <div class="tuner-freq" id="tunerFreq">A4 = 442Hz</div>
           <div class="tuner-note" id="tunerNote">-</div>
@@ -1158,6 +1164,104 @@
 
     const SEMITONE_NAMES = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
 
+    // === 피드백 (눈 감고 연습용) ===
+    let feedbackMode = localStorage.getItem('tunerFeedback') || 'off'; // off | voice | tone
+    let fbCategory = null;      // 'low' | 'in' | 'high'
+    let fbStableCount = 0;
+    let fbLastAnnounced = null;
+    let fbLastTime = 0;
+    const FB_STABLE_FRAMES = 15;   // 약 0.25초 지속 시 판정
+    const FB_REPEAT_MS = 2000;     // 같은 상태 반복 알림 간격
+
+    function setFeedbackMode(mode) {
+      feedbackMode = mode;
+      localStorage.setItem('tunerFeedback', mode);
+      ['fbOff', 'fbVoice', 'fbTone'].forEach(id => document.getElementById(id).classList.remove('active'));
+      document.getElementById(mode === 'off' ? 'fbOff' : mode === 'voice' ? 'fbVoice' : 'fbTone').classList.add('active');
+      // 모드 바꾸면 바로 다시 알릴 수 있게 초기화
+      fbLastAnnounced = null;
+      fbLastTime = 0;
+    }
+
+    function speakFeedback(text) {
+      if (!('speechSynthesis' in window)) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 1.3;
+      u.volume = 1.0;
+      speechSynthesis.speak(u);
+    }
+
+    function playFeedbackTone(category) {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+
+      if (category === 'in') {
+        // 정확: 맑은 "띠링" (상행 2음)
+        [880, 1318.5].forEach((f, i) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + i * 0.12);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.25, now + i * 0.12);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.25);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(now + i * 0.12);
+          osc.stop(now + i * 0.12 + 0.25);
+        });
+      } else {
+        // 낮음: 아래로 미끄러지는 저음 / 높음: 위로 올라가는 고음
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        if (category === 'low') {
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(180, now + 0.3);
+        } else {
+          osc.frequency.setValueAtTime(700, now);
+          osc.frequency.exponentialRampToValueAtTime(1100, now + 0.3);
+        }
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+    }
+
+    function giveFeedback(category) {
+      if (feedbackMode === 'voice') {
+        speakFeedback(category === 'low' ? 'Low' : category === 'high' ? 'High' : 'Good');
+      } else if (feedbackMode === 'tone') {
+        playFeedbackTone(category);
+      }
+    }
+
+    function updateFeedback(cents, detected) {
+      if (feedbackMode === 'off') return;
+      if (!detected) {
+        fbStableCount = 0;
+        fbCategory = null;
+        return;
+      }
+      const category = Math.abs(cents) <= 10 ? 'in' : cents < 0 ? 'low' : 'high';
+      if (category === fbCategory) {
+        fbStableCount++;
+      } else {
+        fbCategory = category;
+        fbStableCount = 1;
+      }
+      const now = Date.now();
+      if (fbStableCount >= FB_STABLE_FRAMES &&
+          (category !== fbLastAnnounced || now - fbLastTime > FB_REPEAT_MS)) {
+        giveFeedback(category);
+        fbLastAnnounced = category;
+        fbLastTime = now;
+      }
+    }
+
     async function startTuner() {
       if (tunerRunning) return;
       document.getElementById('tunerStatus').textContent = '마이크 연결 중...';
@@ -1281,7 +1385,9 @@
         needle.style.left = pos + '%';
         needle.className = 'tuner-needle' + (inTune ? ' in-tune' : '');
         lastGoodDisplay = Date.now();
+        updateFeedback(cents, true);
       } else if (Date.now() - lastGoodDisplay > 800) {
+        updateFeedback(0, false);
         // 0.8초 이상 감지 안 되면 초기화
         noteEl.textContent = '-';
         noteEl.className = 'tuner-note';
@@ -1305,6 +1411,9 @@
         });
       }
     }
+
+    // 저장된 피드백 모드 복원
+    setFeedbackMode(feedbackMode);
 
     // 페이지 로드 시 샘플 자동 로딩
     document.getElementById('sampleStatus').textContent = '로딩 중...';
